@@ -1,0 +1,52 @@
+Investigacion de parametros y analisis de sensores - Jairo
+
+
+oxigeno en la sangre normal desde 95 a 100, minimo deberia ser 93%
+
+pulso en un adulto debe ser 60 a 100 ppm
+
+temperatura minima 35.5 y maxima 38 , mayor a 38 ya no es normal
+
+
+
+Sensor de pulso:
+
+-el sensor de pulso y oxigeno toma lecturas bastante estables si se descartan 
+las 10 primeras de un total de 20 muestras
+
+recomendacion: conseguir que la lectura del oxigeno de un dato tipo float para tener una medida mas exacta
+
+
+Sensor de temperatura:
+
+-se pensaba que se iban a obtener mejores medidas si se tenia el dedo en contacto con el sensor pero las
+muestras de repetibilidad indican una variacion de +-1 grado lo cual es inaceptable
+
+-las toma de muestras mas estables se obtubieron al tener el dedo 5mm aprox. debajo del sensor  
+(se gana estabilidad porque el dedo esta fijo sobre una superficie y no moviendose por encima del sensor)
+
+recomendaciones:
+
+- tomar muestras con termometros normales y con el sensor de temperatura en diferentes personas y comparar
+ambos resultados para poder obtener una funcion de temperatura medida en el dedo vs temperatura corporal
+medida con un termometro, ese dato se ingresaria en el programa y se tendria una medida mas exacta 
+
+- cambiar la posicion del sensor para tomar las muestras
+opcion 1: poner el sensor con el lente hacia arriba y sobre este poner un tipo de mica de vidrio para 
+que el dedo quede fijo sobre el sensor
+
+opcion 2: poner lo mismo que la anterior pero sobre el sensor poner un tipo de base plastica para asentar
+el dedo sobre ella (es lo mas sencillo y voto por esta)
+
+opcion 3: poner el sensor con el lente apuntando hacia abajo (el inconveniente es que los cables saldrian
+por arriba del sensor y eso ocupa espacio o habria que disenar un tipo de caja con forma especial para
+evitar ocupar mucho espacio)
+
+
+Datos adicionales - errores :
+
+
+***el error de watchdog reset se soluciona cambiando de puerto usb para alimentar la wemos
+puede ser una cuestion de corriente.
+
+
