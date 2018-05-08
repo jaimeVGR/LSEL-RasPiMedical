@@ -99,7 +99,7 @@ void reconnect() {
     if (client.connect("ESP8266Client")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("Medic_System/Wemos/Temperatura", "Enviando el primer mensaje");
+      client.publish("Sistema/Wemos", "Conexión correcta: Inicio tranmisión datos\n");
       // ... and resubscribe
       // ESTA PARTE TODAVIA NO LA HACEMOS; ENVIAR RASPY A WEMOS
       //client.subscribe("Sistema/Raspy");
