@@ -23,32 +23,35 @@ class Paciente:
 
 	def getDataFromSensor(self, msg): 
 
-		"""if msg.startswith("Temperatura"):
+		print msg
+
+		if msg.startswith("Temperatura"):
 			
 			[basura,media_y_texto,varianza] = msg.split("=")
-			[media,basura,basura] = media_y_texto.split()
-			return (0,int(media),int(varianza))
+			[media,basura,basura] = media_y_texto.split(" ")
+			print ("Valores obtenidos: Media Temp = " + media+"  Varianza = "+varianza)
+			return (0,0,float(media),float(varianza),100,0)
 		else:
-			print("Mensaje de Oxigeno o Pulso, O error...")
-			return (0,0,0)
-		"""
+			print("Mensaje de Oxigeno o Pulso, o mas bien error...")
+			return (0,0,0,0,0,0)
 
+		"""
 		####Cambar por codigo para obtener los datos de la WeMos
 		print "introduce media pulso:"
 		Mp = input()
 		Vp = Mp
-		print "introduce temperatura:"
+		print "introduce media temperatura:"
 		Mt = input()
 		Vt = Mt
-		print "introduce oxigeno: "
+		print "introduce media oxigeno: "
 		Mo = input()
 		Vo = Mo 
+		"""
+		#return (Mp, Vp, Mt, Vt, Mo, Vo) #Pulso, Temperatura, Oxíg
 
-		return (Mp, Vp, Mt, Vt, Mo, Vo) #Pulso, Temperatura, Oxíg
 
 
-
-	def UpDataToThingspeak(self, pulso, temperatura, oxigeno): 
+	def UpDataToThingspeak(self, pulsoMedia, pulsoVarianza, temperaturaMedia, temperaturaVarianza, oxigenoMedia, oxigenoVarianza): 
 
 		self.URL = "https://api.thingspeak.com/update?api_key=%s&field1=%s&field2=%s&field3=%s&field4=%s&field5=%s&field6=%s&field7=%s" % (self.API_Write, pulsoMedia, pulsoVarianza, temperaturaMedia, temperaturaVarianza, oxigenoMedia, oxigenoVarianza, self.identificador)
 		try: 
