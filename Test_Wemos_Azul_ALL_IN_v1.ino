@@ -19,20 +19,11 @@ const char* mqtt_server = "192.168.4.1";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-
 // FIN MQTT
 
 #define REPORTING_PERIOD_MS     1000
 
 PulseOximeter pox;
-
-
-
-// Variables sensores Nacho y Jaime
-int pulsox_sensor_read_complete = 0;
-
-
-
 
 uint32_t tsLastReport = 0;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -57,8 +48,8 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 //***************************************
 
 //variables auto off
-unsigned long last_measure_time,actual_time=0;   
-unsigned long last_measure_timeout = 20000;
+unsigned long last_measure_time = 0;   
+unsigned long last_measure_timeout = 30000;
 int on_off_button_detector = digitalRead(D0);
 
 // Configuracion Wifi para MQTT
@@ -75,25 +66,46 @@ void setup_wifi() {
   
   WiFi.begin(ssid, password);
 
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Conectando WIFI");
+    
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    
+    delay(100);
     Serial.print(".");
+
+    // Ponemos Autoapagado por si se bloquea al no encontrar WIFI
+    if((millis() >last_measure_timeout))
+    {
+      lcd.setCursor(0,1);
+      lcd.print("Error WIFI");
+      delay(3000);
+      pinMode(D6, OUTPUT);
+      digitalWrite(D6, LOW); //gate mosfet  
+    }
+
+    on_off_button_detector = digitalRead(D0);
+    if(on_off_button_detector==HIGH && (millis()>5000)){
+      pinMode(D6, OUTPUT);
+      digitalWrite(D6, LOW); //gate mosfet
+   }
   }
 
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+  lcd.setCursor(0,1);
+  lcd.print("    WIFI OK");
+  delay(1000);
 }
 
 
 
 void setup()
 {
-  
-   // Configuracion de mensajes por monitor serie
-  Serial.begin(115200);
-  
+  // Realimentación encendido
   pinMode(D7, OUTPUT);//pin gate mosfet  
   digitalWrite(D7, LOW); //retroalimentacion wemos
   
@@ -104,21 +116,15 @@ void setup()
   lcd.print("  BIENVENIDOS   ");
   lcd.setCursor(0,1);
   lcd.print("  RASPIMEDIKAL  ");
-  //delay(2000);
+  delay(2000);
   //lcd.clear();
   
   // Configuracion de Wifi y MQTT
   setup_wifi();
   client.setServer(mqtt_server, 1883);
+  
   // Funcion callback de recepcion de datos
   //client.setCallback(callback);
-
-  /*
-  // The default current for the IR LED is 50mA and it could be changed
-  //   by uncommenting the following line. Check MAX30100_Registers.h for all the
-  //   available options.
-  // pox.setIRLedCurrent(MAX30100_LED_CURR_7_6MA);
-  */
 
   //****************************************setup boton de usuario
   pinMode(D3, INPUT); //pin interface button
@@ -126,32 +132,22 @@ void setup()
 
   //setup auto off
   pinMode(D0, INPUT);//pin on off
-  //pinMode(D7, OUTPUT);//pin gate mosfet  
-  //digitalWrite(D7, LOW); //retroalimentacion wemos
-  //lcd.setCursor(0,0);
-  //lcd.print("RETRO");
-  //delay(2000);
-  // Quizas hacer aqui un timeupdate?
 
-  /*
-  //***************************lcd:
-  lcd.init(); 
-  lcd.backlight();
-  //***********************************
-
-
-  
-  //********************************lcd mensaje inicio
-  lcd.setCursor(0,0);
-  lcd.print("  BIENVENIDOS   ");
-  lcd.setCursor(0,1);
-  lcd.print("  RASPIMEDIKAL  ");
-  delay(2000);
   lcd.clear();
-  //**********************************  
-  */
+  lcd.setCursor(0,0);
+  lcd.print("   ESPERANDO");
+  lcd.setCursor(0,1);
+  lcd.print(" IDENTIFICACION");
 
-  
+  // Aqui codigo para autenticar!!!
+  delay(1000);
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("   IDENTIDAD ");
+  lcd.setCursor(0,1);
+  lcd.print("   CORRECTA");
+  delay(2000);
   
 }
 
@@ -226,39 +222,43 @@ void pulsox_sensor(float oximetria[4])
   
   int samples_total_sensor = 0;
   int samples_validas_sensor = 0;
-  int captura_heart =0 ;
-  int captura_spo2 = 0;
+  int suma_captura_heart =0 ;
+  int suma_captura_spo2 = 0;
+  int captura_heart, captura_spo2, timeout;
   float heartrate_media=0;
   float heartrate_varianza=0;
   float spo2_media=0;
   float spo2_varianza=0;
   float dif_cuadrados_heartrate= 0;
   float dif_cuadrados_spo2=0;
-  float dataheartrate[10] ; 
-  float dataspo2[10];
+  float dataheartrate[15] ; 
+  float dataspo2[15];
   
-
+  timeout = millis() + 20000;
+  
   while (1)
   {
 
-    if (samples_total_sensor == 20)
+    if (samples_validas_sensor == 15)
     {
       //Media y varianza (s^2)
-      heartrate_media = captura_heart/10.0;
-      spo2_media=  captura_spo2/10.0;
-      for (int i=0; i < 10; i++){
+      
+      heartrate_media = suma_captura_heart/samples_validas_sensor;
+      spo2_media= suma_captura_spo2/samples_validas_sensor;
+      for (int i=0; i < samples_validas_sensor; i++){
         dif_cuadrados_heartrate = (dataheartrate[i]-heartrate_media)*(dataheartrate[i]-heartrate_media) + dif_cuadrados_heartrate;
         dif_cuadrados_spo2 = (dataspo2[i]-spo2_media)*(dataspo2[i]-spo2_media) + dif_cuadrados_spo2;
       }
-      heartrate_varianza = dif_cuadrados_heartrate / (10 - 1);
+      
+      heartrate_varianza = dif_cuadrados_heartrate / (samples_validas_sensor - 1.0);
       oximetria[0]= heartrate_media;
       oximetria[1]= heartrate_varianza;
-      spo2_varianza = dif_cuadrados_spo2 / (10 - 1);
+      spo2_varianza = dif_cuadrados_spo2 / (samples_validas_sensor - 1);
       oximetria[2]= spo2_media;
       oximetria[3]= spo2_varianza;
+      
       Serial.print("Ritmo Cardiaco: Media="); Serial.print(oximetria [0]); Serial.println("  Varianza="); Serial.print(oximetria[1]); Serial.print("\n");
       Serial.print("Oxigeno: Media="); Serial.print(oximetria [2]); Serial.println("  Varianza="); Serial.print(oximetria [3]); Serial.print("\n");
-      pulsox_sensor_read_complete = 1;
       pox.shutdown();
       //time_update();
       return;
@@ -271,24 +271,46 @@ void pulsox_sensor(float oximetria[4])
       // For both, a value of 0 means "invalid"
       if (millis() - tsLastReport > REPORTING_PERIOD_MS) 
       {
-        if (samples_total_sensor >= 10) 
-        {
+        captura_heart = pox.getHeartRate();
+        captura_spo2 = pox.getSpO2();
+
+        if ((captura_heart < 50) || (captura_spo2 < 50)){
+          
+          // Si se pasa del timeout paso a la siguiente prueba
+          if (timeout < millis()){  
+            oximetria[0]= -1;
+            oximetria[1]= -1;
+            oximetria[2]= -1;
+            oximetria[3]= -1;
+            pox.shutdown();
+            return;
+          }
+        }
+        else {
+          
+          if (samples_total_sensor >= 15) {
             dataheartrate[samples_validas_sensor]=pox.getHeartRate();
             dataspo2[samples_validas_sensor]=pox.getSpO2();
-            captura_spo2 += pox.getSpO2();
-            captura_heart += pox.getHeartRate();
+            suma_captura_spo2 += pox.getSpO2();
+            suma_captura_heart += pox.getHeartRate();
             Serial.print(pox.getHeartRate());//muestro las 20 lecturas del sensor de pulso y oxigeno
             Serial.print(",");
             Serial.println(pox.getSpO2());
             samples_validas_sensor++;
+          }
+          tsLastReport = millis();
+
+          // Actualizo timeout si dato valido
+          timeout = timeout + millis();
+          samples_total_sensor++;
+          
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print(String(pox.getHeartRate()));
+          lcd.setCursor(0,1);
+          lcd.print(String(pox.getSpO2()));
         }
-        tsLastReport = millis();
-        samples_total_sensor++;
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.print(String(pox.getHeartRate()));
-        lcd.setCursor(0,1);
-        lcd.print(String(pox.getSpO2()));
+        
         
       }
 
@@ -304,6 +326,7 @@ void temp_sensor(float temperatura[2])
   
   //variables temperatura
   int samples_temp_sensor = 0;
+  int  timeout;
   float tempdedo = 0;
   float temp_media = 0;
   float temp_varianza=0;
@@ -312,6 +335,8 @@ void temp_sensor(float temperatura[2])
   float dif_cuadrados_2 = 0;
   float data[20] ; 
   float out[2];
+
+  timeout = millis() + 20000;
   
   while (1)
   {
@@ -342,8 +367,13 @@ void temp_sensor(float temperatura[2])
         delay(500);
       }
       else{
-        Serial.print("Dato despreciado de temperatura: ");Serial.println(data[samples_temp_sensor]);
-        delay(50);
+        Serial.print("Dato despreciado, dedo no detectado: ");Serial.println(data[samples_temp_sensor]);
+        if (timeout < millis()){ 
+          temperatura [0] = -1;
+          temperatura [1]= -1;
+          return;
+        }
+        delay(10);
       }
     }
   }
@@ -354,9 +384,8 @@ void loop()
 {
 
   //times to auto off
-  actual_time=millis();
 
-  if((actual_time>last_measure_timeout))
+  if((millis() >last_measure_timeout))
     {
       pinMode(D6, OUTPUT);
       digitalWrite(D6, LOW); //gate mosfet  
@@ -411,20 +440,43 @@ void loop()
     oximetria[3]= -1 ;
     */
     flag_button=1;
-    flag_ox = 1;
-
-    lcd.clear();
-    lcd.setCursor(0,0); 
-    lcd.print("PULSO: "); 
-    lcd.print(String(oximetria[0])); 
-    lcd.print(" PPM");
-    lcd.setCursor(0,1);
-    lcd.print("OXIG: ");
-    lcd.print(String(oximetria[2])); 
-    delay(3000); 
-    time_update();   // Inicio timer para apagado
     
+    if (oximetria[0]== -1){
+      
+      lcd.clear();
+      lcd.setCursor(0,0); 
+      lcd.print(" MEDIDA ERRONEA"); 
+      lcd.setCursor(0,1);
+      lcd.print("SIGUIENTE PRUEBA");
+      delay(2000);
+    }
+    else {
+      flag_ox = 1;
+
+      lcd.clear();
+      lcd.setCursor(0,0); 
+      lcd.print("PULSO: "); 
+      lcd.print(String(oximetria[0])); 
+      lcd.print(" PPM");
+      lcd.setCursor(0,1);
+      lcd.print("VAR: ");
+      lcd.print(String(oximetria[1])); 
+      delay(2000); 
+      
+      lcd.clear();
+      lcd.setCursor(0,0); 
+      lcd.print("OXIG: ");
+      lcd.print(String(oximetria[2])); 
+      lcd.print(" %");
+      lcd.setCursor(0,1);
+      lcd.print("VAR: ");
+      lcd.print(String(oximetria[3])); 
+      delay(2000); 
+    }
+
+    time_update();   // Inicio timer para apagado
   }
+  
   else {
     //interface_button =digitalRead(D3); 
     if (interface_button==LOW && flag_button==1)
@@ -439,15 +491,31 @@ void loop()
       lcd_interface();
       
       temp_sensor( temperatura );
+      
+      /*temperatura[0]= -1;
+      temperatura[1] = -1;*/
+      
       flag_button=0;
-      flag_temp = 1;
 
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("TEMP: "); 
-      lcd.print(String(temperatura[0])); 
-      lcd.print(" C");
-      delay(3000);
+      if (temperatura[0]== -1){
+        lcd.clear();
+        lcd.setCursor(0,0); 
+        lcd.print(" MEDIDA ERRONEA"); 
+        lcd.setCursor(0,1);
+        lcd.print("SIGUIENTE PRUEBA"); 
+        delay(2000);
+      }
+      else{
+        flag_temp = 1;
+        
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("TEMP: "); 
+        lcd.print(String(temperatura[0])); 
+        lcd.print(" C");
+        delay(3000);
+      }
+      
       time_update(); // Inicio timer para apagado
     }
   }
