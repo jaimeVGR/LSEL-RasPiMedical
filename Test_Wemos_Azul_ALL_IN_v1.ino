@@ -25,7 +25,6 @@ PubSubClient client(espClient);
 
 PulseOximeter pox;
 
-uint32_t tsLastReport = 0;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 // Variables a enviar mqtt
@@ -211,20 +210,14 @@ void time_update()
 void pulsox_sensor(float oximetria[4])
 {
 
-  //inicializar sensor
-  if (!pox.begin()) {
-    Serial.println("FAILED");
-    for (;;);
-  } else {
-    Serial.println("SUCCESS");
-  }
-  pox.setIRLedCurrent(MAX30100_LED_CURR_24MA); // Somos conservadores
-  
   int samples_total_sensor = 0;
   int samples_validas_sensor = 0;
   int suma_captura_heart =0 ;
   int suma_captura_spo2 = 0;
-  int captura_heart, captura_spo2, timeout;
+  int captura_heart;
+  int captura_spo2;
+  unsigned long timeout;
+  uint32_t tsLastReport = 0;
   float heartrate_media=0;
   float heartrate_varianza=0;
   float spo2_media=0;
@@ -233,6 +226,18 @@ void pulsox_sensor(float oximetria[4])
   float dif_cuadrados_spo2=0;
   float dataheartrate[15] ; 
   float dataspo2[15];
+
+  captura_heart = 0;
+  captura_spo2 = 0;
+  
+  //inicializar sensor
+  if (!pox.begin()) {
+    Serial.println("FAILED");
+    for (;;);
+  } else {
+    Serial.println("SUCCESS");
+  }
+  pox.setIRLedCurrent(MAX30100_LED_CURR_24MA); // Somos conservadores
   
   timeout = millis() + 20000;
   
@@ -289,26 +294,26 @@ void pulsox_sensor(float oximetria[4])
         else {
           
           if (samples_total_sensor >= 15) {
-            dataheartrate[samples_validas_sensor]=pox.getHeartRate();
-            dataspo2[samples_validas_sensor]=pox.getSpO2();
-            suma_captura_spo2 += pox.getSpO2();
-            suma_captura_heart += pox.getHeartRate();
-            Serial.print(pox.getHeartRate());//muestro las 20 lecturas del sensor de pulso y oxigeno
+            dataheartrate[samples_validas_sensor]=captura_heart;
+            dataspo2[samples_validas_sensor]=captura_spo2;
+            suma_captura_spo2 += captura_spo2;
+            suma_captura_heart += captura_heart;
+            Serial.print(captura_heart);//muestro las 20 lecturas del sensor de pulso y oxigeno
             Serial.print(",");
-            Serial.println(pox.getSpO2());
+            Serial.println(captura_spo2);
             samples_validas_sensor++;
           }
           tsLastReport = millis();
 
           // Actualizo timeout si dato valido
-          timeout = timeout + millis();
+          timeout = 10000 + millis();
           samples_total_sensor++;
           
           lcd.clear();
           lcd.setCursor(0,0);
-          lcd.print(String(pox.getHeartRate()));
+          lcd.print(String(captura_heart));
           lcd.setCursor(0,1);
-          lcd.print(String(pox.getSpO2()));
+          lcd.print(String(captura_spo2));
         }
         
         
@@ -326,7 +331,7 @@ void temp_sensor(float temperatura[2])
   
   //variables temperatura
   int samples_temp_sensor = 0;
-  int  timeout;
+  unsigned long  timeout;
   float tempdedo = 0;
   float temp_media = 0;
   float temp_varianza=0;
@@ -364,6 +369,7 @@ void temp_sensor(float temperatura[2])
         Serial.println(data[samples_temp_sensor]);//muestro las 20 leccturas del sensor
         tempdedo += (data[samples_temp_sensor]);
         samples_temp_sensor++;
+        timeout = 10000 + millis();
         delay(500);
       }
       else{
@@ -512,7 +518,6 @@ void loop()
         lcd.setCursor(0,0);
         lcd.print("TEMP: "); 
         lcd.print(String(temperatura[0])); 
-        lcd.print(" C");
         delay(3000);
       }
       
