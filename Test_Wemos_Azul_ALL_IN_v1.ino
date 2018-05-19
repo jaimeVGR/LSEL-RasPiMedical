@@ -58,7 +58,7 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 
 //variables auto off
 unsigned long last_measure_time,actual_time=0;   
-unsigned long last_measure_timeout = 10000;
+unsigned long last_measure_timeout = 20000;
 int on_off_button_detector = digitalRead(D0);
 
 // Configuracion Wifi para MQTT
@@ -90,9 +90,23 @@ void setup_wifi() {
 
 void setup()
 {
+  
    // Configuracion de mensajes por monitor serie
   Serial.begin(115200);
+  
+  pinMode(D7, OUTPUT);//pin gate mosfet  
+  digitalWrite(D7, LOW); //retroalimentacion wemos
+  
+  lcd.init(); 
+  lcd.backlight();
 
+  lcd.setCursor(0,0);
+  lcd.print("  BIENVENIDOS   ");
+  lcd.setCursor(0,1);
+  lcd.print("  RASPIMEDIKAL  ");
+  //delay(2000);
+  //lcd.clear();
+  
   // Configuracion de Wifi y MQTT
   setup_wifi();
   client.setServer(mqtt_server, 1883);
@@ -109,11 +123,23 @@ void setup()
   //****************************************setup boton de usuario
   pinMode(D3, INPUT); //pin interface button
   //********************************************
-  
+
+  //setup auto off
+  pinMode(D0, INPUT);//pin on off
+  //pinMode(D7, OUTPUT);//pin gate mosfet  
+  //digitalWrite(D7, LOW); //retroalimentacion wemos
+  //lcd.setCursor(0,0);
+  //lcd.print("RETRO");
+  //delay(2000);
+  // Quizas hacer aqui un timeupdate?
+
+  /*
   //***************************lcd:
   lcd.init(); 
   lcd.backlight();
   //***********************************
+
+
   
   //********************************lcd mensaje inicio
   lcd.setCursor(0,0);
@@ -123,13 +149,9 @@ void setup()
   delay(2000);
   lcd.clear();
   //**********************************  
+  */
 
-
-  //setup auto off
-  pinMode(D0, INPUT);//pin on off
-  pinMode(D7, OUTPUT);//pin gate mosfet  
-  digitalWrite(D7, HIGH); //retroalimentacion wemos
-  // Quizas hacer aqui un timeupdate?
+  
   
 }
 
@@ -185,7 +207,7 @@ void lcd_interface()
 void time_update()
 {
   last_measure_time=millis();
-  last_measure_timeout=last_measure_time+10000;   
+  last_measure_timeout=last_measure_time+20000;   
 }
 
 
@@ -336,14 +358,17 @@ void loop()
 
   if((actual_time>last_measure_timeout))
     {
-      digitalWrite(D7, LOW); //gate mosfet  
+      pinMode(D6, OUTPUT);
+      digitalWrite(D6, LOW); //gate mosfet  
     }
 
   on_off_button_detector = digitalRead(D0);
-  if(on_off_button_detector==HIGH && (millis()>3000))
+  if(on_off_button_detector==HIGH && (millis()>10000))
    {
-     digitalWrite(D7, LOW); //gate mosfet
+     pinMode(D6, OUTPUT);
+     digitalWrite(D6, LOW); //gate mosfet
    }
+   
 
   if (!client.connected()) {
       reconnect();
@@ -352,7 +377,7 @@ void loop()
 
   if (flag_button==0)
   {
-     //lcd.clear();
+    //lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("  PULSA BOTON   ");
     lcd.setCursor(0,1);
