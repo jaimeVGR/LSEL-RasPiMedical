@@ -3,6 +3,10 @@
 #include "MAX30100_PulseOximeter.h"
 #include <Adafruit_MLX90614.h>
 
+// Librerias RFID
+#include <SPI.h>
+#include <MFRC522.h>
+
 // Librerias de MQTT
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
@@ -29,9 +33,11 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 
 // Variables a enviar mqtt
 int flag_temp, flag_ox = 0;
+int flag_autentic, flag_msg_rec = 0;
 float temperatura[2];
 float oximetria[4];
 char msg[50];
+
 
 // Variables boton
 int estado_boton_encendido=0;
@@ -42,13 +48,21 @@ int flag_button=0;
 int interface_button = digitalRead(D3);
 //*******************************************
 
+//********************************************* variables rfid
+#define RST_PIN  D3 
+#define SS_PIN  D8  
+MFRC522 mfrc522(SS_PIN, RST_PIN); 
+byte ActualUID[4]; 
+int autenticacion=0;
+//********************************************
+
 //**************************************inicio lcd
 LiquidCrystal_I2C lcd(0x27,16,2);
 //***************************************
 
 //variables auto off
 unsigned long last_measure_time = 0;   
-unsigned long last_measure_timeout = 30000;
+unsigned long last_measure_timeout = 40000;
 //int on_off_button_detector = digitalRead(D0);
 
 // Configuracion Wifi para MQTT
@@ -71,7 +85,7 @@ void setup_wifi() {
     
   while (WiFi.status() != WL_CONNECTED) {
     
-    delay(100);
+    delay(50);
     Serial.print(".");
 
     // Ponemos Autoapagado por si se bloquea al no encontrar WIFI
@@ -114,6 +128,18 @@ void setup_wifi() {
   delay(1000);
 }
 
+//*********************************** callback de recepcion MQTT
+void callback(char* topic, byte* payload, unsigned int length) {
+  char dataArray[length];
+  for (int i=0;i<length;i++) {
+    dataArray[i] = (char)payload[i];
+  }
+  if (dataArray[0] == 1){
+    flag_autentic = 1;
+  }
+  // else para indicar ERRORES
+}
+
 
 
 void setup()
@@ -146,6 +172,10 @@ void setup()
   //setup auto off
   //pinMode(D0, INPUT);//pin on off
 
+  //configuracion RFID
+  SPI.begin();       
+  mfrc522.PCD_Init();
+
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("   ESPERANDO");
@@ -153,7 +183,77 @@ void setup()
   lcd.print(" IDENTIFICACION");
 
   // Aqui codigo para autenticar!!!
-  delay(1000);
+   while(flag_autentic != 1)
+  {
+    if ( mfrc522.PICC_IsNewCardPresent()) {  
+       if ( mfrc522.PICC_ReadCardSerial()) {
+          for (byte i = 0; i < mfrc522.uid.size; i++){
+             ActualUID[i]=mfrc522.uid.uidByte[i];  
+           }
+           mfrc522.PICC_HaltA();
+
+           // Compruebo conexion Mqtt (y resuscribo a topics)
+           if (!client.connected()) 
+           {
+             reconnect();
+           }
+           client.loop();
+           
+           //Envio del TAG por Mqtt
+           snprintf (msg, 75, "Card UID:%X%X%X%X ", ActualUID[0], ActualUID[1],ActualUID[2],ActualUID[3]);
+           client.publish("Sistema/Wemos/RFID", msg);
+           //delay(1000); No se porque esta el delay?
+
+           //recepcion en funcion interrupcion
+
+           // Si llega mensaje pero no afirmativo, 
+           if (flag_msg_rec == 1){
+              lcd.clear();
+              lcd.setCursor(0,0);
+              lcd.print("   IDENTIDAD ");
+              lcd.setCursor(0,1);
+              lcd.print("   ERRONEA ");
+              delay(2000);
+              lcd.clear();
+              lcd.setCursor(0,0);
+              lcd.print("   ESPERANDO");
+              lcd.setCursor(0,1);
+              lcd.print(" IDENTIFICACION"); 
+           }
+                      
+       }
+    }
+
+    // Compruebo conexion Mqtt (y resuscribo a topics)
+     if (!client.connected()) 
+     {
+       reconnect();
+     }
+     client.loop();
+
+     // Ponemos Autoapagado por si se bloquea al no identificar
+      if((millis() >last_measure_timeout))
+      {
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("   IDENTIDAD ");
+        lcd.setCursor(0,1);
+        lcd.print("   ERRONEA ");
+        delay(2000);
+        pinMode(D0, OUTPUT);
+        digitalWrite(D0, LOW); //gate mosfet  
+      }
+  
+      interface_button =digitalRead(D3); 
+      if (interface_button==LOW){
+        delay(2000);
+        interface_button =digitalRead(D3);
+        if (interface_button==LOW){
+          pinMode(D0, OUTPUT);
+          digitalWrite(D0, LOW); //gate mosfet
+        }
+      }
+  }
 
   lcd.clear();
   lcd.setCursor(0,0);
@@ -177,7 +277,7 @@ void reconnect() {
       client.publish("Sistema/Wemos", "Conexión correcta: Inicio tranmisión datos\n");
       // ... and resubscribe
       // ESTA PARTE TODAVIA NO LA HACEMOS; ENVIAR RASPY A WEMOS
-      //client.subscribe("Sistema/Raspy");
+      client.subscribe("Sistema/Raspy");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -216,7 +316,7 @@ void lcd_interface()
 void time_update()
 {
   last_measure_time=millis();
-  last_measure_timeout=last_measure_time+20000;   
+  last_measure_timeout=last_measure_time+30000;   
 }
 
 
@@ -377,7 +477,7 @@ void temp_sensor(float temperatura[2])
     }
     else
     {
-      data[samples_temp_sensor]= mlx.readObjectTempC()+ 5;
+      data[samples_temp_sensor]= mlx.readObjectTempC()+ 2;  // El offset se añade aqui, primero era de 5, luego lo baje a 2
       
       if (data[samples_temp_sensor] > mlx.readAmbientTempC() && data[samples_temp_sensor] < 50){
         Serial.println(data[samples_temp_sensor]);//muestro las 20 leccturas del sensor
