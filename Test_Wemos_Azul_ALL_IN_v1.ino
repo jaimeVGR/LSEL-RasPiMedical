@@ -49,7 +49,7 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 //variables auto off
 unsigned long last_measure_time = 0;   
 unsigned long last_measure_timeout = 30000;
-int on_off_button_detector = digitalRead(D0);
+//int on_off_button_detector = digitalRead(D0);
 
 // Configuracion Wifi para MQTT
 void setup_wifi() {
@@ -80,15 +80,29 @@ void setup_wifi() {
       lcd.setCursor(0,1);
       lcd.print("Error WIFI");
       delay(3000);
-      pinMode(D6, OUTPUT);
-      digitalWrite(D6, LOW); //gate mosfet  
+      pinMode(D0, OUTPUT);
+      digitalWrite(D0, LOW); //gate mosfet  
     }
 
+    interface_button =digitalRead(D3); 
+    if (interface_button==LOW)
+   {
+     delay(2000);
+     interface_button =digitalRead(D3);
+        if (interface_button==LOW)
+        {
+          pinMode(D0, OUTPUT);
+          digitalWrite(D0, LOW); //gate mosfet
+        }
+    }
+    
+/*
     on_off_button_detector = digitalRead(D0);
     if(on_off_button_detector==HIGH && (millis()>5000)){
       pinMode(D6, OUTPUT);
       digitalWrite(D6, LOW); //gate mosfet
    }
+   */
   }
 
   Serial.println("");
@@ -105,8 +119,8 @@ void setup_wifi() {
 void setup()
 {
   // Realimentación encendido
-  pinMode(D7, OUTPUT);//pin gate mosfet  
-  digitalWrite(D7, LOW); //retroalimentacion wemos
+  pinMode(D4, OUTPUT);//pin gate mosfet  
+  digitalWrite(D4, LOW); //retroalimentacion wemos
   
   lcd.init(); 
   lcd.backlight();
@@ -130,7 +144,7 @@ void setup()
   //********************************************
 
   //setup auto off
-  pinMode(D0, INPUT);//pin on off
+  //pinMode(D0, INPUT);//pin on off
 
   lcd.clear();
   lcd.setCursor(0,0);
@@ -393,17 +407,17 @@ void loop()
 
   if((millis() >last_measure_timeout))
     {
-      pinMode(D6, OUTPUT);
-      digitalWrite(D6, LOW); //gate mosfet  
+      pinMode(D0, OUTPUT);
+      digitalWrite(D0, LOW); //gate mosfet  
     }
-
+/*
   on_off_button_detector = digitalRead(D0);
   if(on_off_button_detector==HIGH && (millis()>10000))
    {
      pinMode(D6, OUTPUT);
      digitalWrite(D6, LOW); //gate mosfet
    }
-   
+*/   
 
   if (!client.connected()) {
       reconnect();
@@ -432,76 +446,86 @@ void loop()
   
   if (interface_button==LOW && flag_button==0)
   {
-    //salida lcd
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("SENSOR DE PULSO ");
-    delay(2000);
-    lcd_interface();
-    
-    pulsox_sensor(oximetria);
-    /*oximetria[0]= -1 ;
-    oximetria[1]= -1 ;
-    oximetria[2]= -1 ;
-    oximetria[3]= -1 ;
-    */
-    flag_button=1;
-    
-    if (oximetria[0]== -1){
+    delay(1000);
+    interface_button =digitalRead(D3);
+      if (interface_button==HIGH && flag_button==0) //check if the button has been released
+        {
+          //salida lcd
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("SENSOR DE PULSO ");
+          delay(2000);
+          lcd_interface();
+          
+          pulsox_sensor(oximetria);
+          /*oximetria[0]= -1 ;
+          oximetria[1]= -1 ;
+          oximetria[2]= -1 ;
+          oximetria[3]= -1 ;
+          */
+          flag_button=1;
+          
+          if (oximetria[0]== -1){
+            
+            lcd.clear();
+            lcd.setCursor(0,0); 
+            lcd.print(" MEDIDA ERRONEA"); 
+            lcd.setCursor(0,1);
+            lcd.print("SIGUIENTE PRUEBA");
+            delay(2000);
+          }
+          else {
+            flag_ox = 1;
       
-      lcd.clear();
-      lcd.setCursor(0,0); 
-      lcd.print(" MEDIDA ERRONEA"); 
-      lcd.setCursor(0,1);
-      lcd.print("SIGUIENTE PRUEBA");
-      delay(2000);
-    }
-    else {
-      flag_ox = 1;
-
-      lcd.clear();
-      lcd.setCursor(0,0); 
-      lcd.print("PULSO: "); 
-      lcd.print(String(oximetria[0])); 
-      lcd.print(" PPM");
-      lcd.setCursor(0,1);
-      lcd.print("VAR: ");
-      lcd.print(String(oximetria[1])); 
-      delay(2000); 
+            lcd.clear();
+            lcd.setCursor(0,0); 
+            lcd.print("PULSO: "); 
+            lcd.print(String(oximetria[0])); 
+            lcd.print(" PPM");
+            lcd.setCursor(0,1);
+            lcd.print("VAR: ");
+            lcd.print(String(oximetria[1])); 
+            delay(2000); 
+            
+            lcd.clear();
+            lcd.setCursor(0,0); 
+            lcd.print("OXIG: ");
+            lcd.print(String(oximetria[2])); 
+            lcd.print(" %");
+            lcd.setCursor(0,1);
+            lcd.print("VAR: ");
+            lcd.print(String(oximetria[3])); 
+            delay(2000); 
+          }
       
-      lcd.clear();
-      lcd.setCursor(0,0); 
-      lcd.print("OXIG: ");
-      lcd.print(String(oximetria[2])); 
-      lcd.print(" %");
-      lcd.setCursor(0,1);
-      lcd.print("VAR: ");
-      lcd.print(String(oximetria[3])); 
-      delay(2000); 
-    }
+          time_update();   // Inicio timer para apagado
 
-    time_update();   // Inicio timer para apagado
+        }
   }
   
   else {
     //interface_button =digitalRead(D3); 
     if (interface_button==LOW && flag_button==1)
     {
-      //salida lcd
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("   SENSOR DE    ");
-      lcd.setCursor(0,1);
-      lcd.print("  TEMPERATURA   ");
-      delay(2000);
-      lcd_interface();
+      delay(1000);
+      interface_button =digitalRead(D3); 
+      if (interface_button==HIGH && flag_button==1)//check if the button has been released
+        {
+          //salida lcd
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("   SENSOR DE    ");
+          lcd.setCursor(0,1);
+          lcd.print("  TEMPERATURA   ");
+          delay(2000);
+          lcd_interface();
+          
+          temp_sensor( temperatura );
       
-      temp_sensor( temperatura );
-      
-      /*temperatura[0]= -1;
-      temperatura[1] = -1;*/
-      
-      flag_button=0;
+          /*temperatura[0]= -1;
+          temperatura[1] = -1;*/
+          
+          flag_button=0;
 
       if (temperatura[0]== -1){
         lcd.clear();
@@ -524,6 +548,21 @@ void loop()
       time_update(); // Inicio timer para apagado
     }
   }
+}
+  
+
+  interface_button =digitalRead(D3); 
+    if (interface_button==LOW)
+   {
+     delay(2000);
+     interface_button =digitalRead(D3);
+        if (interface_button==LOW)
+        {
+          pinMode(D0, OUTPUT);
+          digitalWrite(D0, LOW); //gate mosfet
+        }
+    }
+    
 
   if (!client.connected()) {
     reconnect();
