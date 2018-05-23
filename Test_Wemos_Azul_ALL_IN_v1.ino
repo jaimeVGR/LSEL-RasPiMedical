@@ -62,13 +62,13 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 
 //variables auto off
 unsigned long last_measure_time = 0;   
-unsigned long last_measure_timeout = 40000;
+unsigned long last_measure_timeout = 100000;
 //int on_off_button_detector = digitalRead(D0);
 
 // Configuracion Wifi para MQTT
 void setup_wifi() {
 
-  delay(10);
+  delay(50);
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
@@ -130,14 +130,16 @@ void setup_wifi() {
 
 //*********************************** callback de recepcion MQTT
 void callback(char* topic, byte* payload, unsigned int length) {
+
+  flag_msg_rec = 1;
   char dataArray[length];
   for (int i=0;i<length;i++) {
     dataArray[i] = (char)payload[i];
   }
-  if (dataArray[0] == 1){
+  if (dataArray[0] == '1'){
     flag_autentic = 1;
   }
-  // else para indicar ERRORES
+    // else para indicar ERRORES
 }
 
 
@@ -147,9 +149,11 @@ void setup()
   // Realimentación encendido
   pinMode(D4, OUTPUT);//pin gate mosfet  
   digitalWrite(D4, LOW); //retroalimentacion wemos
-  
+
   lcd.init(); 
   lcd.backlight();
+
+  Serial.begin(115200);
 
   lcd.setCursor(0,0);
   lcd.print("  BIENVENIDOS   ");
@@ -161,9 +165,9 @@ void setup()
   // Configuracion de Wifi y MQTT
   setup_wifi();
   client.setServer(mqtt_server, 1883);
-  
+
   // Funcion callback de recepcion de datos
-  //client.setCallback(callback);
+  client.setCallback(callback);
 
   //****************************************setup boton de usuario
   pinMode(D3, INPUT); //pin interface button
@@ -206,20 +210,7 @@ void setup()
 
            //recepcion en funcion interrupcion
 
-           // Si llega mensaje pero no afirmativo, 
-           if (flag_msg_rec == 1){
-              lcd.clear();
-              lcd.setCursor(0,0);
-              lcd.print("   IDENTIDAD ");
-              lcd.setCursor(0,1);
-              lcd.print("   ERRONEA ");
-              delay(2000);
-              lcd.clear();
-              lcd.setCursor(0,0);
-              lcd.print("   ESPERANDO");
-              lcd.setCursor(0,1);
-              lcd.print(" IDENTIFICACION"); 
-           }
+           
                       
        }
     }
@@ -253,6 +244,22 @@ void setup()
           digitalWrite(D0, LOW); //gate mosfet
         }
       }
+
+      // Si llega mensaje pero no afirmativo, 
+       if (flag_msg_rec == 1 && flag_autentic != 1){
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("   IDENTIDAD ");
+          lcd.setCursor(0,1);
+          lcd.print("   ERRONEA ");
+          delay(2000);
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("   ESPERANDO");
+          lcd.setCursor(0,1);
+          lcd.print(" IDENTIFICACION"); 
+       }
+       flag_msg_rec = 0;
   }
 
   lcd.clear();
