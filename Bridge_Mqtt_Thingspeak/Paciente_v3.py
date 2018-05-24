@@ -14,9 +14,11 @@ class Paciente:
 	def __init__(self):
 		f = open("NombrePaciente.txt", "r")
 		for linea in f: 
-			espacio = linea.find(" ")
-			self.identificador = int(linea[0:espacio])
-			self.nombre_usuario = linea[espacio+1:len(linea)-1]
+			[self.identificador,self.nombre_usuario,self.dni,RFID] = linea.split(",") #Falta quitar /n del RFID
+			self.RFID = RFID.split('\n')[0]
+			#espacio = linea.find(" ")
+			#self.identificador = int(linea[0:espacio])
+			#self.nombre_usuario = linea[espacio+1:len(linea)-1]
 
 		self.API_Write = "1HUIIJ1XJ61ZO06G"
 
@@ -24,16 +26,13 @@ class Paciente:
 	def getDataFromSensor(self, msg): 
 
 		print msg
-
-		if msg.startswith("Temperatura"):
 			
-			[basura,media_y_texto,varianza] = msg.split("=")
-			[media,basura,basura] = media_y_texto.split(" ")
-			print ("Valores obtenidos: Media Temp = " + media+"  Varianza = "+varianza)
-			return (0,0,float(media),float(varianza),100,0)
-		else:
-			print("Mensaje de Oxigeno o Pulso, o mas bien error...")
-			return (0,0,0,0,0,0)
+		[basura,media_y_texto,varianza] = msg.split("=")
+		[media,basura,basura] = media_y_texto.split(" ")
+
+		print ("Valores obtenidos: Media Temp = " + media+"  Varianza = "+varianza)
+		return (float(media),float(varianza))
+
 
 		"""
 		####Cambar por codigo para obtener los datos de la WeMos
@@ -70,4 +69,17 @@ class Paciente:
 
 	def getName(self): 
 		return self.nombre_usuario 
+
+	def checkRFID(self, mensaje):
+		f = open("NombrePaciente.txt", "r")
+		
+		rfid = mensaje.split(":")[1].split('\n')[0]
+		print rfid
+
+		for line in f: 
+			print (line.split(',')[3].split('\n')[0])
+			if line.split(',')[3].split('\n')[0] == rfid: 
+				return 1
+
+		return 0
 		
