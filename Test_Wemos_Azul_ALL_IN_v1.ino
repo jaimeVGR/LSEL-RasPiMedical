@@ -44,8 +44,11 @@ int estado_boton_encendido=0;
 int estado_boton_prueba=0;
 
 //*******************************************variables boton de usuario
-int flag_button=0;
-int interface_button = digitalRead(D3);
+//int flag_button=0;
+//int interface_button = digitalRead(D3);
+int button_temp = digitalRead(D3);
+int on_off_button_detector = digitalRead(D0);
+int button_pulse=0;
 //*******************************************
 
 //********************************************* variables rfid
@@ -94,29 +97,16 @@ void setup_wifi() {
       lcd.setCursor(0,1);
       lcd.print("Error WIFI");
       delay(3000);
-      pinMode(D0, OUTPUT);
-      digitalWrite(D0, LOW); //gate mosfet  
+      digitalWrite(D4, HIGH); //gate mosfet  
     }
 
-    interface_button =digitalRead(D3); 
-    if (interface_button==LOW)
+    on_off_button_detector =digitalRead(D0); 
+    if (on_off_button_detector==HIGH && (millis()>3000))
    {
-     delay(2000);
-     interface_button =digitalRead(D3);
-        if (interface_button==LOW)
-        {
-          pinMode(D0, OUTPUT);
-          digitalWrite(D0, LOW); //gate mosfet
-        }
-    }
-    
-/*
-    on_off_button_detector = digitalRead(D0);
-    if(on_off_button_detector==HIGH && (millis()>5000)){
-      pinMode(D6, OUTPUT);
-      digitalWrite(D6, LOW); //gate mosfet
+      digitalWrite(D4, HIGH); //gate mosfet       
    }
-   */
+
+    
   }
 
   Serial.println("");
@@ -160,7 +150,12 @@ void setup()
   lcd.setCursor(0,1);
   lcd.print("  RASPIMEDIKAL  ");
   delay(2000);
-  //lcd.clear();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("  PULSA BOTON   ");
+  lcd.setCursor(0,1);
+  lcd.print("  PARA INICIAR  ");
+    
   
   // Configuracion de Wifi y MQTT
   setup_wifi();
@@ -170,11 +165,11 @@ void setup()
   client.setCallback(callback);
 
   //****************************************setup boton de usuario
-  pinMode(D3, INPUT); //pin interface button
+  pinMode(D3, INPUT); //pin interface temp
   //********************************************
 
-  //setup auto off
-  //pinMode(D0, INPUT);//pin on off
+  pinMode(D0, INPUT);//pin button on off
+
 
   //configuracion RFID
   SPI.begin();       
@@ -231,19 +226,15 @@ void setup()
         lcd.setCursor(0,1);
         lcd.print("   ERRONEA ");
         delay(2000);
-        pinMode(D0, OUTPUT);
-        digitalWrite(D0, LOW); //gate mosfet  
+        digitalWrite(D4, HIGH); //gate mosfet  
       }
   
-      interface_button =digitalRead(D3); 
-      if (interface_button==LOW){
-        delay(2000);
-        interface_button =digitalRead(D3);
-        if (interface_button==LOW){
-          pinMode(D0, OUTPUT);
-          digitalWrite(D0, LOW); //gate mosfet
-        }
+      on_off_button_detector =digitalRead(D0); 
+      if (on_off_button_detector==HIGH && (millis()>3000))
+      {
+        digitalWrite(D4, HIGH); //gate mosfet
       }
+      
 
       // Si llega mensaje pero no afirmativo, 
        if (flag_msg_rec == 1 && flag_autentic != 1){
@@ -267,6 +258,10 @@ void setup()
   lcd.print("   IDENTIDAD ");
   lcd.setCursor(0,1);
   lcd.print("   CORRECTA");
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  int button_pulse = digitalRead(D8);
+  pinMode(D8, INPUT); //pin interface pulse
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   delay(2000);
   
 }
@@ -514,8 +509,7 @@ void loop()
 
   if((millis() >last_measure_timeout))
     {
-      pinMode(D0, OUTPUT);
-      digitalWrite(D0, LOW); //gate mosfet  
+      digitalWrite(D4, HIGH); //gate mosfet  
     }
 /*
   on_off_button_detector = digitalRead(D0);
@@ -531,15 +525,7 @@ void loop()
   }
   client.loop();
 
-  if (flag_button==0)
-  {
-    //lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("  PULSA BOTON   ");
-    lcd.setCursor(0,1);
-    lcd.print("  PARA INICIAR  ");
-  } 
-
+/*
   else
   {
      //lcd.clear();
@@ -548,14 +534,10 @@ void loop()
      lcd.setCursor(0,1);
      lcd.print("SIGUIENTE PRUEBA"); 
    }
-  
-  interface_button =digitalRead(D3);
-  
-  if (interface_button==LOW && flag_button==0)
-  {
-    delay(1000);
-    interface_button =digitalRead(D3);
-      if (interface_button==HIGH && flag_button==0) //check if the button has been released
+*/  
+
+  button_pulse=digitalRead(D8);
+      if (button_pulse==HIGH)
         {
           //salida lcd
           lcd.clear();
@@ -570,7 +552,6 @@ void loop()
           oximetria[2]= -1 ;
           oximetria[3]= -1 ;
           */
-          flag_button=1;
           
           if (oximetria[0]== -1){
             
@@ -608,15 +589,12 @@ void loop()
           time_update();   // Inicio timer para apagado
 
         }
-  }
+
   
   else {
-    //interface_button =digitalRead(D3); 
-    if (interface_button==LOW && flag_button==1)
-    {
-      delay(1000);
-      interface_button =digitalRead(D3); 
-      if (interface_button==HIGH && flag_button==1)//check if the button has been released
+    
+      button_temp=digitalRead(D3); 
+      if (button_temp==LOW)
         {
           //salida lcd
           lcd.clear();
@@ -632,7 +610,7 @@ void loop()
           /*temperatura[0]= -1;
           temperatura[1] = -1;*/
           
-          flag_button=0;
+          
 
       if (temperatura[0]== -1){
         lcd.clear();
@@ -654,21 +632,14 @@ void loop()
       
       time_update(); // Inicio timer para apagado
     }
-  }
 }
   
 
-  interface_button =digitalRead(D3); 
-    if (interface_button==LOW)
+  on_off_button_detector =digitalRead(D0); 
+    if (on_off_button_detector==HIGH && (millis()>3000))
    {
-     delay(2000);
-     interface_button =digitalRead(D3);
-        if (interface_button==LOW)
-        {
-          pinMode(D0, OUTPUT);
-          digitalWrite(D0, LOW); //gate mosfet
-        }
-    }
+      digitalWrite(D4, HIGH); //gate mosfet
+   }
     
 
   if (!client.connected()) {
