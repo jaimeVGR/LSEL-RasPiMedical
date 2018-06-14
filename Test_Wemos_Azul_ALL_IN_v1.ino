@@ -150,11 +150,13 @@ void setup()
   lcd.setCursor(0,1);
   lcd.print("  RASPIMEDIKAL  ");
   delay(2000);
+  /*
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("  PULSA BOTON   ");
   lcd.setCursor(0,1);
   lcd.print("  PARA INICIAR  ");
+  */
     
   
   // Configuracion de Wifi y MQTT
@@ -199,7 +201,7 @@ void setup()
            client.loop();
            
            //Envio del TAG por Mqtt
-           snprintf (msg, 75, "Card UID:%X%X%X%X ", ActualUID[0], ActualUID[1],ActualUID[2],ActualUID[3]);
+           snprintf (msg, 75, "Card UID:%X%X%X%X", ActualUID[0], ActualUID[1],ActualUID[2],ActualUID[3]);
            client.publish("Sistema/Wemos/RFID", msg);
            //delay(1000); No se porque esta el delay?
 
@@ -263,6 +265,12 @@ void setup()
   pinMode(D8, INPUT); //pin interface pulse
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   delay(2000);
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("  PULSA UN BOTON  ");
+  lcd.setCursor(0,1);
+  lcd.print("  PARA INICIAR  ");
   
 }
 
@@ -573,7 +581,7 @@ void loop()
             lcd.setCursor(0,1);
             lcd.print("VAR: ");
             lcd.print(String(oximetria[1])); 
-            delay(2000); 
+            delay(5000); 
             
             lcd.clear();
             lcd.setCursor(0,0); 
@@ -583,7 +591,16 @@ void loop()
             lcd.setCursor(0,1);
             lcd.print("VAR: ");
             lcd.print(String(oximetria[3])); 
-            delay(2000); 
+            delay(5000); 
+
+       
+            lcd.clear();
+            lcd.setCursor(0,0);
+            lcd.print("PULSE 1: REPETIR"); 
+            lcd.setCursor(0,1);
+            lcd.print("PULSE 2: TEMP     "); 
+            
+            
           }
       
           time_update();   // Inicio timer para apagado
@@ -622,12 +639,20 @@ void loop()
       }
       else{
         flag_temp = 1;
-        
+
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print("TEMP: "); 
         lcd.print(String(temperatura[0])); 
-        delay(3000);
+        delay(5000);
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("PULSE 2: REPETIR"); 
+        lcd.setCursor(0,1);
+        lcd.print("PULSE 1: OXIGENO"); 
+
+        
+   
       }
       
       time_update(); // Inicio timer para apagado
