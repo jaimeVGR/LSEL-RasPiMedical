@@ -55,12 +55,17 @@ def main():
 
 			if tema_mqtt.startswith("Sistema/Wemos/RFID"):
 				print ("RFID recibido")
-				if paciente.checkRFID(mensaje_mqtt):
+				if paciente.checkRFID(mensaje_mqtt) == 1:
 					client.publish("Sistema/Raspy",1)
 					print ("RFID correcto, envio respuesta")
+				else:
+					client.publish("Sistema/Raspy",2)
 
 			elif tema_mqtt.startswith("Sistema/Movil"):
 				print ("Mensaje de movil")
+				if paciente.checkDNI(mensaje_mqtt) == 1:
+					client.publish("Sistema/Raspy",1)
+					print ("Movil ID correcto, envio respuesta")
 
 			elif tema_mqtt.startswith("Sistema/Wemos/Pulso"):
 				(tm,tv) = paciente.getDataFromSensor(mensaje_mqtt)
