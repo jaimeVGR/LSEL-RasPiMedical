@@ -74,11 +74,19 @@ class Paciente:
 		f = open("NombrePaciente.txt", "r")
 		
 		rfid = mensaje.split(":")[1].split('\n')[0]
-		print rfid
-
 		for line in f: 
-			print (line.split(',')[3].split('\n')[0])
-			if line.split(',')[3].split('\n')[0] == rfid: 
+			if (line.split(',')[3].split('\n')[0]) == rfid: 
+				return 1
+
+		return 0
+
+
+	def checkDNI(self, mensaje):
+		f = open("NombrePaciente.txt", "r")
+		print mensaje
+		for line in f: 
+			print (line.split(',')[2])
+			if line.split(',')[2] == mensaje: 
 				return 1
 
 		return 0
